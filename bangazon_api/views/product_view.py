@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db.models import Count
+from rest_framework.serializers import ModelSerializer
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,7 +9,7 @@ from rest_framework.exceptions import ValidationError
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from bangazon_api.helpers import STATE_NAMES
-from bangazon_api.models import Product, Store, Category, Order, Rating, Recommendation, OrderProduct
+from bangazon_api.models import Product, Store, Category, Order, Rating, Recommendation, OrderProduct, Like
 from bangazon_api.serializers import (
     ProductSerializer, CreateProductSerializer, MessageSerializer,
     AddProductRatingSerializer, AddRemoveRecommendationSerializer)
@@ -348,3 +349,45 @@ class ProductView(ViewSet):
             )
 
         return Response({'message': 'Rating added'}, status=status.HTTP_201_CREATED)
+    
+    @action(methods =['POST', 'DELETE'] , detail=True)
+    def like(self, request, pk= None):
+        customer = request.auth.user
+        product = Product.objects.get(pk=pk)
+        if request.method == 'POST':
+            try: 
+                Like.objects.get(customer = customer, product = product)
+                return Response({'message':'already exists'})
+            except:
+                
+                try:
+                    
+                    Like.objects.create(
+                        customer = customer,
+                        product = product  
+                )
+                    return Response(status = status.HTTP_201_CREATED)  
+                except:
+                    return Response({'message':'error'}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        elif request.method == 'DELETE':
+            try:
+                like = Like.objects.get(customer = customer, product = product)
+                like.delete()
+                return Response(status = status.HTTP_204_NO_CONTENT)
+            except:
+                return Response({'message':'error'}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    @action(methods = ['GET'], detail = False)
+    def liked(self, request):
+        try:
+            liked = Like.objects.filter(customer = request.auth.user)
+            serializer = LikeSerializer(liked, many=True, context={"request": request})
+            return Response(serializer.data)
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+class LikeSerializer(ModelSerializer):
+    product: ProductSerializer()
+    class Meta:
+        model = Like
+        fields = ('id', 'customer', 'product')

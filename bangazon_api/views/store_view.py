@@ -119,10 +119,12 @@ class StoreView(ViewSet):
                 )
                     return Response(status = status.HTTP_201_CREATED)  
                 except:
-                    return Response({'message':'error'}, status.HTTP_226_IM_USED)
+                    return Response({'message':'error'}, status.HTTP_500_INTERNAL_SERVER_ERROR)
         elif request.method == 'DELETE':
             try:
                 favorite = Favorite.objects.get(customer = customer, store = store)
                 favorite.delete()
+                return Response(status = status.HTTP_204_NO_CONTENT)
             except:
-                return Response({'message':'error'}, status.HTTP_403_FORBIDDEN)
+                return Response({'message':'error'}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
